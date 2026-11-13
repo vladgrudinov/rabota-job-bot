@@ -71,21 +71,45 @@ class VacancyMatcher:
             if bad_emp in employer_lower:
                 return False, 0, f"Компания '{employer}' в черном списке"
 
-        # 2. СТРОГАЯ ПРОВЕРКА СТОП-СЛОВ В НАЗВАНИИ (продажи, склад, комплектовщик и т.д.)
+        # 2. СТРОГАЯ ПРОВЕРКА СТОП-СЛОВ В НАЗВАНИИ (продажи, склад, строительные/заводские инженеры)
         for stop_word in self.title_stops:
             if stop_word in title_lower:
                 return False, 0, f"Стоп-слово: '{stop_word}'"
+
+        # Дополнительный отсев нерелевантных физических/строительных инженеров
+        industrial_stops = [
+            "механик", "конструктор", "проектировщик", "теплогаз", "водоснабжен",
+            "канализац", "сметчик", "чпу", "станк", "технолог", "электронщик",
+            "овик", "электрик", "сантехник", "монтажник", "бурильщик", "наладчик",
+            "геодезист", "архитектор", "агроном", "зоотехник"
+        ]
+        for ind_stop in industrial_stops:
+            if ind_stop in title_lower:
+                return False, 0, f"Непрофильный инженер: '{ind_stop}'"
 
         # 3. СТОП-СЛОВА В ОПИСАНИИ (холодные звонки, активные продажи)
         for stop_word in self.desc_stops:
             if stop_word in desc_lower:
                 return False, 0, f"Стоп-слово в описании: '{stop_word}'"
 
-        # 4. ЖЕСТКИЙ ФИЛЬТР ЗАРПЛАТЫ (ОТ 2700 BYN)
+        # 4. УМНАЯ ОЦЕНКА ЗАРПЛАТЫ (2500 + БОНУСЫ / ПРЕМИИ ИДУТ В ЗАЧЕТ)
         salary_byn = self.parse_salary_to_byn(salary_str)
         if salary_byn is not None:
-            if salary_byn < self.min_salary:
-                return False, 10, f"З/п (~{salary_byn} BYN) ниже минимальной ({self.min_salary} BYN)"
+            # Проверяем, упоминаются ли бонусы, премии, KPI, проценты
+            has_bonuses = any(b in full_text for b in [
+                "бонус", "преми", "kpi", "кпи", "процент", "%", "+", 
+                "надбавк", "мотиваци", "доплат", "годовой бонус", "квартальн"
+            ])
+            
+            # Эффективная зарплата с учетом бонусов
+            effective_salary = salary_byn + (500 if has_bonuses else 0)
+
+            # Если базовая ставка 2500+ и есть премии, или зарплата от 2500 в целом
+            if salary_byn < 2500 and effective_salary < self.min_salary:
+                return False, 10, f"З/п (~{salary_byn} BYN) ниже 2500 BYN"
+            elif salary_byn >= 2500 and effective_salary >= self.min_salary:
+                # Проходит с бонусами!
+                salary_bonus_pass = True
 
         # 5. Оценка соответствия портфолио
         score = 0
