@@ -1,6 +1,8 @@
 name: Rabota.by 24/7 Cloud Job Hunter
 
 on:
+  push:
+    branches: [main]
   schedule:
     # Запуск каждые 30 минут в дневное время (с 09:00 до 21:00 по Минску)
     - cron: '*/30 6-18 * * 1-5'
