@@ -1,0 +1,46 @@
+name: Rabota.by 24/7 Cloud Job Hunter
+
+on:
+  schedule:
+    # Запуск каждые 30 минут в дневное время (с 09:00 до 21:00 по Минску)
+    - cron: '*/30 6-18 * * 1-5'
+  workflow_dispatch: # Кнопка ручного запуска в интерфейсе GitHub
+
+permissions:
+  contents: write
+
+jobs:
+  hunt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          playwright install chromium --with-deps
+
+      - name: Run Cloud Job Hunter
+        run: |
+          python run_cloud.py
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+      - name: Save updated application database
+        run: |
+          git config --global user.name "RabotaJobBot"
+          git config --global user.email "bot@rabotaby.local"
+          git add bot_data.db
+          git commit -m "chore: sync applied vacancies [skip ci]" || echo "No changes to commit"
+          git push || echo "Nothing to push"
