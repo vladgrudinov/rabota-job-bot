@@ -72,44 +72,88 @@ def run_cloud_session():
         logger.info(f"Авторизация активна! URL: {page.url}")
 
         # 2. Проверка сообщений и приглашений от HR
-        logger.info("[2/3] Проверка новых сообщений и приглашений от работодателей...")
-        for check_url in [
-            "https://rabota.by/applicant/negotiations?filter=invitations",
-            "https://rabota.by/applicant/negotiations?filter=messages"
-        ]:
-            try:
-                page.goto(check_url, wait_until="domcontentloaded")
-                time.sleep(3)
-                dialogs = page.query_selector_all("[data-qa='negotiations-item']") or \
-                          page.query_selector_all(".negotiations-item") or \
-                          page.query_selector_all("a[href*='/negotiations/']")
+        logger.info("[2/3] Проверка новых сообщений и приглашений от работодателей в https://rabota.by/chat...")
+        try:
+            page.goto("https://rabota.by/chat", wait_until="domcontentloaded")
+            time.sleep(3)
 
-                for dlg in dialogs[:5]:
-                    dlg.click()
+            # Закрываем баннер cookie
+            c_btn = page.query_selector("button:has-text('Принять')") or page.query_selector("[data-qa*='cookie']")
+            if c_btn:
+                try:
+                    c_btn.click(force=True)
+                    time.sleep(0.5)
+                except Exception:
+                    pass
+
+            chat_elements = page.query_selector_all("a[href*='/chat/']")
+            chat_urls = []
+            for cl in chat_elements:
+                href = cl.get_attribute("href")
+                if href and "/chat/" in href:
+                    clean_url = href.split("?")[0]
+                    if clean_url not in chat_urls:
+                        chat_urls.append(clean_url)
+
+            logger.info(f"Найдено диалогов в списке чатов: {len(chat_urls)}")
+
+            for href in chat_urls[:10]:
+                try:
+                    full_url = f"https://rabota.by{href}" if href.startswith("/") else href
+                    chat_id = href.split("/")[-1]
+
+                    page.goto(full_url, wait_until="domcontentloaded")
                     time.sleep(2)
-                    emp_el = page.query_selector("[data-qa='negotiations-item-company']") or \
-                             page.query_selector("[data-qa='vacancy-company-name']")
-                    title_el = page.query_selector("[data-qa='negotiations-item-vacancy']") or page.query_selector("h1")
 
-                    emp_name = emp_el.inner_text().strip() if emp_el else "Работодатель"
-                    vac_title = title_el.inner_text().strip() if title_el else "Вакансия"
+                    bubbles = page.query_selector_all("[data-qa='chat-bubble-message']")
+                    if not bubbles:
+                        continue
 
-                    chat_input = page.query_selector("textarea[data-qa='negotiations-message-input']") or \
-                                 page.query_selector("textarea")
+                    last_b = bubbles[-1]
+                    box = last_b.bounding_box()
+                    x_pos = box["x"] if box else 0
+                    last_msg = last_b.inner_text().strip()
 
-                    if chat_input and chat_input.is_visible():
-                        reply_text = ai.generate_invitation_reply(emp_name, vac_title)
-                        chat_input.fill(reply_text)
+                    # Если X > 700 - последнее сообщение от нас
+                    if x_pos > 700:
+                        continue
+
+                    msg_lower = last_msg.lower()
+                    if "к сожалению" in msg_lower or msg_lower.startswith("отказ") or \
+                       "спасибо за ответы" in msg_lower or "вынуждены отказать" in msg_lower:
+                        continue
+
+                    header_h1 = page.query_selector("h1") or page.query_selector("h2")
+                    vac_title = header_h1.inner_text().strip() if header_h1 else "Вакансия"
+                    emp_name = "Работодатель"
+
+                    logger.info(f"[!] Неотвеченное сообщение от работодателя ({full_url}): «{last_msg[:80]}...»")
+
+                    reply_text = ai.generate_invitation_reply(emp_name, vac_title, last_msg)
+
+                    inp = page.locator("textarea[data-qa='text-input']")
+                    if inp.is_visible():
+                        inp.fill(reply_text)
                         time.sleep(1)
-                        send_b = page.query_selector("[data-qa='negotiations-message-submit']") or \
-                                 page.query_selector("button:has-text('Отправить')")
-                        if send_b:
-                            send_b.click()
-                            time.sleep(2)
-                            logger.info(f"[+] Отправлен ответ в {emp_name} ({vac_title})!")
-                            telegram.notify_invitation(emp_name, vac_title, "Новое сообщение в диалоге", reply_text)
-            except Exception as e:
-                logger.debug(f"Ошибка проверки диалогов: {e}")
+
+                        send_btn = page.locator("button[data-qa='record-complete']")
+                        if send_btn.is_visible():
+                            send_btn.click(force=True)
+                        else:
+                            page.keyboard.press("Enter")
+
+                        time.sleep(2)
+                        logger.info(f"[+] ОТВЕТ УСПЕШНО ОТПРАВЛЕН В ЧАТ {chat_id}!")
+                        db.record_chat(chat_id, emp_name, vac_title, True, last_msg)
+                        db.mark_chat_replied(chat_id, reply_text)
+                        telegram.notify_invitation(emp_name, vac_title, last_msg, reply_text)
+
+                except Exception as inner_e:
+                    logger.debug(f"Ошибка диалога {href}: {inner_e}")
+                    continue
+
+        except Exception as e:
+            logger.error(f"Ошибка проверки диалогов: {e}")
 
         # 3. Сканирование вакансий и отклики
         logger.info("[3/3] Сканирование вакансий (фильтр: от 2700 BYN, стоп-слова исключены)...")
