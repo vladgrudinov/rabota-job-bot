@@ -92,11 +92,15 @@ FILTER_SETTINGS = {
     ],
 }
 
-# --- Ускоренные настройки имитации человека ---
+# --- Настройки имитации человека (защита от капчи и банов) ---
 HUMAN_BEHAVIOR = {
-    # Задержка между действиями (в секундах)
-    "min_delay_seconds": 2,
-    "max_delay_seconds": 6,
+    # Задержка между просмотром вакансий (в секундах) - естественный темп человека
+    "min_delay_seconds": 6,
+    "max_delay_seconds": 14,
+    # Задержка между отправкой откликов
+    "delay_between_applications_min": 18,
+    "delay_between_applications_max": 35,
+}
 
     # Задержка между откликами (в секундах) - ускоренно
     "delay_between_applications_min": 10,
