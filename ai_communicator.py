@@ -88,7 +88,7 @@ class AICommunicator:
             )
             cta = "Буду рад ответить на вопросы на онлайн-созвоне в удобное для вас время."
 
-        tg = self.contacts.get("telegram", "@grudinov_vi")
+        tg = self.contacts.get("telegram", "@vlad_marshmallow (https://t.me/vlad_marshmallow)")
         phone = self.contacts.get("phone", "")
         contacts_str = f" (Telegram: {tg}, тел.: {phone})" if phone else f" (Telegram: {tg})"
 
@@ -103,7 +103,7 @@ class AICommunicator:
 
     def generate_invitation_reply(self, employer: str, vacancy_title: str, hr_message: str = "") -> str:
         """Вежливый, четкий ответ на приглашение HR."""
-        tg = self.contacts.get("telegram", "@grudinov_vi")
+        tg = self.contacts.get("telegram", "@vlad_marshmallow (https://t.me/vlad_marshmallow)")
         phone = self.contacts.get("phone", "")
         contacts_str = f"Telegram: {tg}, телефон: {phone}" if phone else f"Telegram: {tg}"
 
