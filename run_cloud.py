@@ -174,27 +174,30 @@ def run_cloud_session():
                 break
 
             logger.info(f"--- Поиск по направлению: '{query}' ---")
-            search_url = f"https://rabota.by/search/vacancy?text={query}&area=16&page=0"
-            page.goto(search_url, wait_until="domcontentloaded")
-            time.sleep(3)
-
-            # Сначала извлекаем все ссылки на странице поиска в чистый список строк
-            links = page.query_selector_all("a[data-qa='serp-item__title']") or \
-                    page.query_selector_all("a[href*='/vacancy/']")
-
             urls_to_visit = []
-            for link in links:
-                try:
-                    href = link.get_attribute("href") or ""
-                    import re
-                    m = re.search(r'/vacancy/(\d+)', href)
-                    if m:
-                        vac_id = m.group(1)
-                        if vac_id not in seen_ids and not db.is_vacancy_processed(vac_id) and not db.has_applied(vac_id):
-                            seen_ids.add(vac_id)
-                            urls_to_visit.append((vac_id, f"https://rabota.by/vacancy/{vac_id}"))
-                except Exception:
-                    continue
+            max_pages = SEARCH_SETTINGS.get("max_search_pages", 3)
+            for page_idx in range(max_pages):
+                if session_applied >= session_limit:
+                    break
+                search_url = f"https://rabota.by/search/vacancy?text={query}&area=16&order_by=publication_time&page={page_idx}"
+                page.goto(search_url, wait_until="domcontentloaded")
+                time.sleep(2)
+
+                links = page.query_selector_all("a[data-qa='serp-item__title']") or \
+                        page.query_selector_all("a[href*='/vacancy/']")
+
+                for link in links:
+                    try:
+                        href = link.get_attribute("href") or ""
+                        import re
+                        m = re.search(r'/vacancy/(\d+)', href)
+                        if m:
+                            vac_id = m.group(1)
+                            if vac_id not in seen_ids and not db.is_vacancy_processed(vac_id) and not db.has_applied(vac_id):
+                                seen_ids.add(vac_id)
+                                urls_to_visit.append((vac_id, f"https://rabota.by/vacancy/{vac_id}"))
+                    except Exception:
+                        continue
 
             logger.info(f"Найдено новых вакансий для анализа: {len(urls_to_visit)}")
 
