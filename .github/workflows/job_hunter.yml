@@ -43,6 +43,11 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
 
+      - name: Ping and Keep-Alive Bybit Trading Bot on Render
+        if: always()
+        run: |
+          curl -s -i --max-time 30 https://bybit-trading-pilot.onrender.com/health || true
+
       - name: Save updated application database
         if: always()
         run: |

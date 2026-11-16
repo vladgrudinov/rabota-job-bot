@@ -56,3 +56,11 @@ class TelegramNotifier:
         if reply_sent:
             text += f"\n🤖 <b>Бот уже ответил:</b>\n<i>{reply_sent}</i>"
         self.send_message(text)
+
+    def notify_session_expired(self):
+        text = (
+            "⚠️ <b>Внимание: Сессия rabota.by устарела</b>\n\n"
+            "Пожалуйста, запустите на компьютере <code>1_LOGIN_FIRST.bat</code>, "
+            "чтобы обновить авторизацию."
+        )
+        self.send_message(text)

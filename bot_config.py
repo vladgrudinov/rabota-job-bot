@@ -155,8 +155,8 @@ AUTO_RESPONDER = {
 
 # --- Уведомления в Telegram ---
 TELEGRAM_SETTINGS = {
-    "bot_token": os.getenv("TELEGRAM_BOT_TOKEN", ""),
-    "chat_id": os.getenv("TELEGRAM_CHAT_ID", ""),
+    "bot_token": os.getenv("TELEGRAM_BOT_TOKEN") or "9249236628:AAEe56h1gUumuAD7pVy2vJnpdQQIAp8TybM",
+    "chat_id": os.getenv("TELEGRAM_CHAT_ID") or "617898045",
 }
 
 # --- Пути ---

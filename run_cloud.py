@@ -30,6 +30,23 @@ from matcher import VacancyMatcher
 from ai_communicator import AICommunicator
 from telegram_notifier import TelegramNotifier
 
+def dismiss_overlays(p):
+    """Безопасно закрывает баннеры cookie, модальные окна и всплывающие опросники."""
+    try:
+        for selector in [
+            "button:has-text('Принять')",
+            "[data-qa*='cookie']",
+            "[data-qa*='modal-close']",
+            "button[aria-label='Закрыть']",
+            ".bloko-modal-close-button",
+        ]:
+            btn = p.query_selector(selector)
+            if btn and btn.is_visible():
+                btn.click(force=True)
+                time.sleep(0.3)
+    except Exception:
+        pass
+
 def run_cloud_session():
     logger.info("=" * 65)
     logger.info("  RABOTA.BY CLOUD HUNTER (GITHUB ACTIONS / 24/7 CLOUD)")
@@ -57,16 +74,19 @@ def run_cloud_session():
         viewport={"width": 1366, "height": 768},
         user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
     )
+    context.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
     page = context.new_page()
 
     try:
         # 1. Проверяем валидность сессии
         logger.info("[1/3] Проверка авторизации на rabota.by...")
-        page.goto("https://rabota.by/applicant/resumes", wait_until="domcontentloaded")
+        page.goto("https://rabota.by/applicant/resumes", wait_until="domcontentloaded", timeout=25000)
         time.sleep(3)
+        dismiss_overlays(page)
 
         if "login" in page.url or "signup" in page.url:
             logger.error("Сессия устарела или требует повторной авторизации.")
+            telegram.notify_session_expired()
             return
 
         logger.info(f"Авторизация активна! URL: {page.url}")
@@ -236,28 +256,34 @@ def run_cloud_session():
                 logger.info(f"[+] ДОСТОЙНАЯ ({score}%): {title} | {employer} [{reason}]")
 
                 # Проверяем кнопку отклика
-                apply_btn = page.query_selector("[data-qa='vacancy-response-link-top']")
+                dismiss_overlays(page)
+                apply_btn = page.query_selector("[data-qa='vacancy-response-link-top']") or \
+                            page.query_selector("[data-qa='vacancy-response-link-view']") or \
+                            page.query_selector("a:has-text('Откликнуться')")
+
                 if not apply_btn or "откликнулись" in page.content().lower():
                     db.save_vacancy(vac_id, title, employer, salary, vac_url, score, reason, "already_applied")
                     continue
 
                 cover_letter = ai.generate_cover_letter(title, employer, tags, desc)
-                apply_btn.click()
-                time.sleep(3)
+                apply_btn.click(force=True)
+                time.sleep(2.5)
+                dismiss_overlays(page)
 
                 # Если есть textarea для сопроводительного
                 txt_area = page.query_selector("textarea[data-qa='vacancy-response-popup-form-letter-input']") or \
                            page.query_selector("textarea")
                 if txt_area and txt_area.is_visible():
                     txt_area.fill(cover_letter)
-                    time.sleep(1)
+                    time.sleep(0.8)
 
                 sub_btn = page.query_selector("[data-qa='vacancy-response-submit-popup']") or \
+                          page.query_selector("button[data-qa='vacancy-response-submit-popup']") or \
                           page.query_selector("button:has-text('Откликнуться')") or \
                           page.query_selector("button:has-text('Отправить отклик')")
 
                 if sub_btn and sub_btn.is_visible():
-                    sub_btn.click()
+                    sub_btn.click(force=True)
                     time.sleep(2)
 
                 session_applied += 1
