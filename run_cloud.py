@@ -168,6 +168,7 @@ def run_cloud_session():
         
         session_applied = 0
         session_limit = 20  # До 20 откликов за один облачный запуск
+        seen_ids = set()
 
         for query in queries:
             if session_applied >= session_limit:
@@ -196,7 +197,8 @@ def run_cloud_session():
                             if vac_id not in seen_ids and not db.is_vacancy_processed(vac_id) and not db.has_applied(vac_id):
                                 seen_ids.add(vac_id)
                                 urls_to_visit.append((vac_id, f"https://rabota.by/vacancy/{vac_id}"))
-                    except Exception:
+                    except Exception as link_err:
+                        logger.debug(f"Ошибка извлечения ID вакансии: {link_err}")
                         continue
 
             logger.info(f"Найдено новых вакансий для анализа: {len(urls_to_visit)}")
