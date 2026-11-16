@@ -71,7 +71,7 @@ SEARCH_SETTINGS = {
     "only_with_salary": False,
     # Умная зарплата: от 2400-2500 BYN (а с премиями/бонусами от 2700+ идет в зачет)
     "min_salary_byn": 2400,
-    "max_search_pages": 4,
+    "max_search_pages": 1,
 }
 
 # --- Фильтрация вакансий и стоп-слова ---

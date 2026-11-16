@@ -181,8 +181,8 @@ def run_cloud_session():
                 if session_applied >= session_limit:
                     break
                 search_url = f"https://rabota.by/search/vacancy?text={query}&area=16&order_by=publication_time&page={page_idx}"
-                page.goto(search_url, wait_until="domcontentloaded")
-                time.sleep(2)
+                page.goto(search_url, wait_until="domcontentloaded", timeout=25000)
+                time.sleep(1.5)
 
                 links = page.query_selector_all("a[data-qa='serp-item__title']") or \
                         page.query_selector_all("a[href*='/vacancy/']")
@@ -207,8 +207,8 @@ def run_cloud_session():
             for vac_id, vac_url in urls_to_visit:
                 if session_applied >= session_limit:
                     break
-                page.goto(vac_url, wait_until="domcontentloaded")
-                time.sleep(2)
+                page.goto(vac_url, wait_until="domcontentloaded", timeout=25000)
+                time.sleep(1.5)
 
                 # Извлекаем параметры вакансии
                 title_el = page.query_selector("h1")
