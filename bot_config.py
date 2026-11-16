@@ -100,22 +100,13 @@ HUMAN_BEHAVIOR = {
     # Задержка между отправкой откликов
     "delay_between_applications_min": 18,
     "delay_between_applications_max": 35,
-}
-
-    # Задержка между откликами (в секундах) - ускоренно
-    "delay_between_applications_min": 10,
-    "delay_between_applications_max": 20,
-
     # Суточный лимит откликов
     "max_daily_applications": 120,
-
     # Максимум откликов за один сеанс
     "max_session_applications": 40,
-
     # Рабочие часы бота
     "work_hours_start": 8,
     "work_hours_end": 23,
-
     "simulate_reading": True,
     "typing_delay_ms_range": (15, 40),
 }
