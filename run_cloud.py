@@ -87,20 +87,31 @@ def run_cloud_session():
                     pass
 
             chat_elements = page.query_selector_all("a[href*='/chat/']")
-            chat_urls = []
+            chat_info_list = []
             for cl in chat_elements:
                 href = cl.get_attribute("href")
                 if href and "/chat/" in href:
                     clean_url = href.split("?")[0]
-                    if clean_url not in chat_urls:
-                        chat_urls.append(clean_url)
+                    t_el = cl.query_selector("[data-qa='chat-cell-title']")
+                    c_el = cl.query_selector("[data-qa='chat-cell-subtitle']")
+                    title = t_el.inner_text().strip() if t_el else "Вакансия"
+                    comp = c_el.inner_text().strip() if c_el else ""
+                    if not any(item["url"] == clean_url for item in chat_info_list):
+                        chat_info_list.append({
+                            "url": clean_url,
+                            "title": title,
+                            "company": comp
+                        })
 
-            logger.info(f"Найдено диалогов в списке чатов: {len(chat_urls)}")
+            logger.info(f"Найдено диалогов в списке чатов: {len(chat_info_list)}")
 
-            for href in chat_urls[:10]:
+            for item in chat_info_list[:12]:
                 try:
+                    href = item["url"]
                     full_url = f"https://rabota.by{href}" if href.startswith("/") else href
                     chat_id = href.split("/")[-1]
+                    vac_title = item["title"]
+                    emp_name = item["company"]
 
                     page.goto(full_url, wait_until="domcontentloaded")
                     time.sleep(2)
@@ -123,11 +134,7 @@ def run_cloud_session():
                        "спасибо за ответы" in msg_lower or "вынуждены отказать" in msg_lower:
                         continue
 
-                    header_h1 = page.query_selector("h1") or page.query_selector("h2")
-                    vac_title = header_h1.inner_text().strip() if header_h1 else "Вакансия"
-                    emp_name = "Работодатель"
-
-                    logger.info(f"[!] Неотвеченное сообщение от работодателя ({full_url}): «{last_msg[:80]}...»")
+                    logger.info(f"[!] Неотвеченное сообщение от {emp_name} по «{vac_title}» ({full_url}): «{last_msg[:80]}...»")
 
                     reply_text = ai.generate_invitation_reply(emp_name, vac_title, last_msg)
 
