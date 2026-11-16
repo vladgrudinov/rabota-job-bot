@@ -12,44 +12,57 @@ if hasattr(sys.stdout, 'reconfigure'):
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
 
-# --- Поисковые параметры (все сферы портфолио) ---
+# --- Поисковые параметры (максимальный охват под все навыки резюме) ---
 SEARCH_SETTINGS = {
     "search_queries": [
-        # Tech Support & IT Ops
+        # 1. Technical Support & IT Systems (L2, Helpdesk, SysAdmin)
         "Техническая поддержка",
         "Technical Support",
         "L2 Support",
         "IT Support",
         "Системный администратор",
+        "System Administrator",
         "Service Desk",
         "Helpdesk",
         "Инженер технической поддержки",
         "Инженер сопровождения",
+        "Специалист по внедрению",
+        "Дежурный инженер",
         
-        # Management & Operations
+        # 2. Management, Operations, Coordination & Administrative
         "Менеджер проектов",
         "Project Manager",
         "Операционный менеджер",
+        "Operations Manager",
         "Менеджер продукта",
         "Product Manager",
+        "Координатор проектов",
         "Координатор",
         "Руководитель проектов",
         "Бизнес ассистент",
+        "Помощник руководителя",
         "Account Manager",
+        "Customer Success",
         "Управляющий",
+        "Менеджер по логистике",
+        "Менеджер по закупкам",
+        "Офис менеджер",
         
-        # IT Dev, QA & Data
+        # 3. IT Development, QA, Data & Analytics
         "Python Developer",
         "Backend Developer",
         "Data Engineer",
         "Аналитик данных",
+        "Data Analyst",
         "Системный аналитик",
+        "Бизнес аналитик",
         "QA Engineer",
         "Тестировщик",
         
-        # Fitness & Sport
+        # 4. Fitness, Sports & Health
         "Фитнес тренер",
         "Персональный тренер",
+        "Инструктор тренажерного зала",
         "Инструктор",
     ],
     "area": 16,            # 16 = вся Беларусь (включая Минск)
@@ -63,8 +76,8 @@ SEARCH_SETTINGS = {
 
 # --- Фильтрация вакансий и стоп-слова ---
 FILTER_SETTINGS = {
-    # Минимальный скоринг: 15% (не упускает нормальные вакансии)
-    "min_match_score": 15,
+    # Порог совпадения: 10% (максимально активный охват всех смежных ролей)
+    "min_match_score": 10,
 
     # СТРОГИЕ СЛОВА-ИСКЛЮЧЕНИЯ В НАЗВАНИИ
     "title_stop_words": [
