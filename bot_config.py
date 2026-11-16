@@ -19,15 +19,21 @@ SEARCH_SETTINGS = {
         "Technical Support",
         "L2 Support",
         "IT Support",
+        "Системный администратор",
+        "Service Desk",
+        "Helpdesk",
         "Менеджер проектов",
+        "Project Manager",
         "Операционный менеджер",
         "Координатор",
         "Администратор",
         "Управляющий",
+        "Менеджер продукта",
         "Фитнес тренер",
         "Персональный тренер",
         "Инструктор",
         "Python Developer",
+        "Backend Developer",
         "Data Engineer",
     ],
     "area": 16,            # 16 = вся Беларусь (включая Минск)
@@ -95,20 +101,20 @@ FILTER_SETTINGS = {
 # --- Настройки имитации человека (защита от капчи и банов) ---
 HUMAN_BEHAVIOR = {
     # Задержка между просмотром вакансий (в секундах) - естественный темп человека
-    "min_delay_seconds": 6,
-    "max_delay_seconds": 14,
+    "min_delay_seconds": 4,
+    "max_delay_seconds": 9,
     # Задержка между отправкой откликов
-    "delay_between_applications_min": 18,
-    "delay_between_applications_max": 35,
+    "delay_between_applications_min": 12,
+    "delay_between_applications_max": 24,
     # Суточный лимит откликов
-    "max_daily_applications": 120,
+    "max_daily_applications": 150,
     # Максимум откликов за один сеанс
-    "max_session_applications": 40,
+    "max_session_applications": 25,
     # Рабочие часы бота
     "work_hours_start": 8,
     "work_hours_end": 23,
     "simulate_reading": True,
-    "typing_delay_ms_range": (15, 40),
+    "typing_delay_ms_range": (15, 35),
 }
 
 # --- Автоответчик на приглашения и сообщения HR ---

@@ -167,7 +167,7 @@ def run_cloud_session():
         queries = SEARCH_SETTINGS.get("search_queries", ["Technical Support", "Менеджер", "Python"])
         
         session_applied = 0
-        session_limit = 12  # До 12 откликов за один облачный запуск
+        session_limit = 20  # До 20 откликов за один облачный запуск
 
         for query in queries:
             if session_applied >= session_limit:
