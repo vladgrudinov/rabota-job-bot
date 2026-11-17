@@ -148,9 +148,9 @@ HUMAN_BEHAVIOR = {
 
 # --- Автоответчик на приглашения и сообщения HR ---
 AUTO_RESPONDER = {
-    "enabled": True,
+    "enabled": False, # Отключено: бот не трогает сообщения, только откликается
     "respond_once_per_chat": True,
-    "check_interval_seconds": 240, # Каждые 4 минуты
+    "check_interval_seconds": 240,
 }
 
 # --- Уведомления в Telegram ---

@@ -24,7 +24,7 @@ logging.basicConfig(
 logger = logging.getLogger("CloudHunter")
 
 from playwright.sync_api import sync_playwright
-from bot_config import SEARCH_SETTINGS, FILTER_SETTINGS, HUMAN_BEHAVIOR
+from bot_config import SEARCH_SETTINGS, FILTER_SETTINGS, HUMAN_BEHAVIOR, AUTO_RESPONDER
 from db import Database
 from matcher import VacancyMatcher
 from ai_communicator import AICommunicator
@@ -91,96 +91,99 @@ def run_cloud_session():
 
         logger.info(f"Авторизация активна! URL: {page.url}")
 
-        # 2. Проверка сообщений и приглашений от HR
-        logger.info("[2/3] Проверка новых сообщений и приглашений от работодателей в https://rabota.by/chat...")
-        try:
-            page.goto("https://rabota.by/chat", wait_until="domcontentloaded")
-            time.sleep(3)
+        # 2. Проверка сообщений и приглашений от HR (отключена по запросу пользователя)
+        if AUTO_RESPONDER.get("enabled", False):
+            logger.info("[2/3] Проверка новых сообщений и приглашений от работодателей в https://rabota.by/chat...")
+            try:
+                page.goto("https://rabota.by/chat", wait_until="domcontentloaded")
+                time.sleep(3)
 
-            # Закрываем баннер cookie
-            c_btn = page.query_selector("button:has-text('Принять')") or page.query_selector("[data-qa*='cookie']")
-            if c_btn:
-                try:
-                    c_btn.click(force=True)
-                    time.sleep(0.5)
-                except Exception:
-                    pass
+                # Закрываем баннер cookie
+                c_btn = page.query_selector("button:has-text('Принять')") or page.query_selector("[data-qa*='cookie']")
+                if c_btn:
+                    try:
+                        c_btn.click(force=True)
+                        time.sleep(0.5)
+                    except Exception:
+                        pass
 
-            chat_elements = page.query_selector_all("a[href*='/chat/']")
-            chat_info_list = []
-            for cl in chat_elements:
-                href = cl.get_attribute("href")
-                if href and "/chat/" in href:
-                    clean_url = href.split("?")[0]
-                    t_el = cl.query_selector("[data-qa='chat-cell-title']")
-                    c_el = cl.query_selector("[data-qa='chat-cell-subtitle']")
-                    title = t_el.inner_text().strip() if t_el else "Вакансия"
-                    comp = c_el.inner_text().strip() if c_el else ""
-                    if not any(item["url"] == clean_url for item in chat_info_list):
-                        chat_info_list.append({
-                            "url": clean_url,
-                            "title": title,
-                            "company": comp
-                        })
+                chat_elements = page.query_selector_all("a[href*='/chat/']")
+                chat_info_list = []
+                for cl in chat_elements:
+                    href = cl.get_attribute("href")
+                    if href and "/chat/" in href:
+                        clean_url = href.split("?")[0]
+                        t_el = cl.query_selector("[data-qa='chat-cell-title']")
+                        c_el = cl.query_selector("[data-qa='chat-cell-subtitle']")
+                        title = t_el.inner_text().strip() if t_el else "Вакансия"
+                        comp = c_el.inner_text().strip() if c_el else ""
+                        if not any(item["url"] == clean_url for item in chat_info_list):
+                            chat_info_list.append({
+                                "url": clean_url,
+                                "title": title,
+                                "company": comp
+                            })
 
-            logger.info(f"Найдено диалогов в списке чатов: {len(chat_info_list)}")
+                logger.info(f"Найдено диалогов в списке чатов: {len(chat_info_list)}")
 
-            for item in chat_info_list[:12]:
-                try:
-                    href = item["url"]
-                    full_url = f"https://rabota.by{href}" if href.startswith("/") else href
-                    chat_id = href.split("/")[-1]
-                    vac_title = item["title"]
-                    emp_name = item["company"]
+                for item in chat_info_list[:12]:
+                    try:
+                        href = item["url"]
+                        full_url = f"https://rabota.by{href}" if href.startswith("/") else href
+                        chat_id = href.split("/")[-1]
+                        vac_title = item["title"]
+                        emp_name = item["company"]
 
-                    page.goto(full_url, wait_until="domcontentloaded")
-                    time.sleep(2)
-
-                    bubbles = page.query_selector_all("[data-qa='chat-bubble-message']")
-                    if not bubbles:
-                        continue
-
-                    last_b = bubbles[-1]
-                    box = last_b.bounding_box()
-                    x_pos = box["x"] if box else 0
-                    last_msg = last_b.inner_text().strip()
-
-                    # Если X > 700 - последнее сообщение от нас
-                    if x_pos > 700:
-                        continue
-
-                    msg_lower = last_msg.lower()
-                    if "к сожалению" in msg_lower or msg_lower.startswith("отказ") or \
-                       "спасибо за ответы" in msg_lower or "вынуждены отказать" in msg_lower:
-                        continue
-
-                    logger.info(f"[!] Неотвеченное сообщение от {emp_name} по «{vac_title}» ({full_url}): «{last_msg[:80]}...»")
-
-                    reply_text = ai.generate_invitation_reply(emp_name, vac_title, last_msg)
-
-                    inp = page.locator("textarea[data-qa='text-input']")
-                    if inp.is_visible():
-                        inp.fill(reply_text)
-                        time.sleep(1)
-
-                        send_btn = page.locator("button[data-qa='record-complete']")
-                        if send_btn.is_visible():
-                            send_btn.click(force=True)
-                        else:
-                            page.keyboard.press("Enter")
-
+                        page.goto(full_url, wait_until="domcontentloaded")
                         time.sleep(2)
-                        logger.info(f"[+] ОТВЕТ УСПЕШНО ОТПРАВЛЕН В ЧАТ {chat_id}!")
-                        db.record_chat(chat_id, emp_name, vac_title, True, last_msg)
-                        db.mark_chat_replied(chat_id, reply_text)
-                        telegram.notify_invitation(emp_name, vac_title, last_msg, reply_text)
 
-                except Exception as inner_e:
-                    logger.debug(f"Ошибка диалога {href}: {inner_e}")
-                    continue
+                        bubbles = page.query_selector_all("[data-qa='chat-bubble-message']")
+                        if not bubbles:
+                            continue
 
-        except Exception as e:
-            logger.error(f"Ошибка проверки диалогов: {e}")
+                        last_b = bubbles[-1]
+                        box = last_b.bounding_box()
+                        x_pos = box["x"] if box else 0
+                        last_msg = last_b.inner_text().strip()
+
+                        # Если X > 700 - последнее сообщение от нас
+                        if x_pos > 700:
+                            continue
+
+                        msg_lower = last_msg.lower()
+                        if "к сожалению" in msg_lower or msg_lower.startswith("отказ") or \
+                           "спасибо за ответы" in msg_lower or "вынуждены отказать" in msg_lower:
+                            continue
+
+                        logger.info(f"[!] Неотвеченное сообщение от {emp_name} по «{vac_title}» ({full_url}): «{last_msg[:80]}...»")
+
+                        reply_text = ai.generate_invitation_reply(emp_name, vac_title, last_msg)
+
+                        inp = page.locator("textarea[data-qa='text-input']")
+                        if inp.is_visible():
+                            inp.fill(reply_text)
+                            time.sleep(1)
+
+                            send_btn = page.locator("button[data-qa='record-complete']")
+                            if send_btn.is_visible():
+                                send_btn.click(force=True)
+                            else:
+                                page.keyboard.press("Enter")
+
+                            time.sleep(2)
+                            logger.info(f"[+] ОТВЕТ УСПЕШНО ОТПРАВЛЕН В ЧАТ {chat_id}!")
+                            db.record_chat(chat_id, emp_name, vac_title, True, last_msg)
+                            db.mark_chat_replied(chat_id, reply_text)
+                            telegram.notify_invitation(emp_name, vac_title, last_msg, reply_text)
+
+                    except Exception as inner_e:
+                        logger.debug(f"Ошибка диалога {href}: {inner_e}")
+                        continue
+
+            except Exception as e:
+                logger.error(f"Ошибка проверки диалогов: {e}")
+        else:
+            logger.info("[2/3] Раздел сообщений пропущен (автоответчик отключен пользователем, бот только откликается).")
 
         # 3. Сканирование вакансий и отклики
         logger.info("[3/3] Сканирование вакансий (фильтр: от 2700 BYN, стоп-слова исключены)...")
