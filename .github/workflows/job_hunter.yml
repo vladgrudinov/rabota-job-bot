@@ -4,8 +4,8 @@ on:
   push:
     branches: [main]
   schedule:
-    # Запуск каждые 15 минут со смещением от круглого часа (для надежности планировщика GitHub)
-    - cron: '7,22,37,52 * * * *'
+    # Запуск каждые 20 минут (каждый запуск выполняет 3 цикла с интервалом 5 минут)
+    - cron: '*/20 * * * *'
   workflow_dispatch: # Кнопка ручного запуска в интерфейсе GitHub
 
 permissions:
@@ -18,7 +18,7 @@ concurrency:
 jobs:
   hunt:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Checkout repository
@@ -53,6 +53,7 @@ jobs:
         run: |
           git config --global user.name "RabotaJobBot"
           git config --global user.email "bot@rabotaby.local"
+          git pull --rebase || true
           git add bot_data.db
           git commit -m "chore: sync applied vacancies [skip ci]" || echo "No changes to commit"
           git push || echo "Nothing to push"

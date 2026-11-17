@@ -258,10 +258,17 @@ def run_cloud_session():
                 # Проверяем кнопку отклика
                 dismiss_overlays(page)
                 apply_btn = page.query_selector("[data-qa='vacancy-response-link-top']") or \
-                            page.query_selector("[data-qa='vacancy-response-link-view']") or \
-                            page.query_selector("a:has-text('Откликнуться')")
+                            page.query_selector("a:has-text('Откликнуться')") or \
+                            page.query_selector("button:has-text('Откликнуться')")
 
-                if not apply_btn or "откликнулись" in page.content().lower():
+                page_text_lower = page.content().lower()
+                is_already_done = False
+                if not apply_btn:
+                    is_already_done = True
+                elif "вы уже откликнулись" in page_text_lower or "вы откликнулись" in page_text_lower or "отклик отправлен" in page_text_lower:
+                    is_already_done = True
+
+                if is_already_done:
                     db.save_vacancy(vac_id, title, employer, salary, vac_url, score, reason, "already_applied")
                     continue
 
@@ -302,5 +309,28 @@ def run_cloud_session():
         p.stop()
         logger.info(f"Сессия завершена. Отправлено откликов за запуск: {session_applied}")
 
+def main():
+    cycles = int(os.environ.get("RUN_CYCLES", "3"))
+    interval_sec = int(os.environ.get("CYCLE_INTERVAL_SEC", "300"))
+
+    for cycle in range(1, cycles + 1):
+        logger.info(f"\n{'='*25} ЦИКЛ {cycle}/{cycles} {'='*25}")
+        try:
+            run_cloud_session()
+        except Exception as e:
+            logger.error(f"Сбой в цикле {cycle}: {e}", exc_info=True)
+
+        # Пингуем торгового бота на Render для 24/7 поддержания активности
+        try:
+            import urllib.request
+            urllib.request.urlopen("https://bybit-trading-pilot.onrender.com/health", timeout=15)
+            logger.info("[~] Render Bybit Pilot keep-alive ping: 200 OK")
+        except Exception as ping_err:
+            logger.debug(f"[~] Render keep-alive ping: {ping_err}")
+
+        if cycle < cycles:
+            logger.info(f"Ожидание {interval_sec} сек до следующего цикла проверки...")
+            time.sleep(interval_sec)
+
 if __name__ == "__main__":
-    run_cloud_session()
+    main()
